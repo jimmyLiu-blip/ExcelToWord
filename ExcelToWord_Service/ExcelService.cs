@@ -3,10 +3,8 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelToWord_Service
 {
-    /// <summary>
     /// Excel 操作服務實作類別
     /// 負責開啟 Excel、讀取命名範圍、關閉資源
-    /// </summary>
     public class ExcelService : IExcelService
     {
         private readonly Excel.Application _excelApp;
