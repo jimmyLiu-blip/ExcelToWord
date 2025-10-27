@@ -6,10 +6,8 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelToWord_Service
 {
-    /// <summary>
     /// 匯出流程協調器
     /// 負責協調 Excel 和 Word 服務，執行完整的匯出流程
-    /// </summary>
     public class ExportCoordinator
     {
         private readonly ExportSettings _settings;
@@ -39,17 +37,17 @@ namespace ExcelToWord_Service
                 ProcessWorksheet((Excel.Worksheet)workbook.Sheets[i]);
             }
 
-            Console.WriteLine("\n🎉 全部完成！");
+            Console.WriteLine("\n 全部完成！");
 
             // 清理資源
-            _excelService.Close();
+            _excelService.CloseWorkbook();
             _wordService.Quit();
         }
 
-        /// <summary>處理單一工作表</summary>
+        /// 處理單一工作表
         private void ProcessWorksheet(Excel.Worksheet ws)
         {
-            Console.WriteLine($"\n▶ 處理工作表：{ws.Name}");
+            Console.WriteLine($"\n 處理工作表：{ws.Name}");
 
             foreach (string rangeName in _settings.TargetNames)
             {
@@ -57,14 +55,14 @@ namespace ExcelToWord_Service
             }
         }
 
-        /// <summary>處理單一命名範圍</summary>
+        /// 處理單一命名範圍
         private void ProcessNamedRange(Excel.Worksheet ws, string rangeName)
         {
             // 取得命名範圍
             Excel.Range range = _excelService.GetNamedRange(ws, rangeName);
             if (range == null)
             {
-                Console.WriteLine($"⚠ 找不到命名範圍：{rangeName}（在 {ws.Name}）");
+                Console.WriteLine($"找不到命名範圍：{rangeName}（在 {ws.Name}）");
                 return;
             }
 
@@ -79,7 +77,7 @@ namespace ExcelToWord_Service
             _wordService.InsertRangePicture(doc, ws.Name, range, _settings.ImageWidthCm);
             _wordService.SaveAndClose(doc, wordPath);
 
-            Console.WriteLine($"✅ 匯出 {rangeName} → {wordPath}");
+            Console.WriteLine($" 匯出 {rangeName} → {wordPath}");
 
             // 延遲確保 COM 操作完成
             Thread.Sleep(_settings.DelayMs);

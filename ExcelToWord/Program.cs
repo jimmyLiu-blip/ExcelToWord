@@ -9,7 +9,7 @@ namespace ExcelToWord
         [STAThread]
         static void Main()
         {
-            Console.WriteLine("🚀 ExcelToWord 匯出系統啟動中...\n");
+            Console.WriteLine(" ExcelToWord 匯出系統啟動中...\n");
 
             try
             {

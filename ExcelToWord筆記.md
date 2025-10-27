@@ -14,7 +14,7 @@
 
 ---
 
-## 🧩 ExportSettings.cs
+# 🧩 ExportSettings.cs
 
 > **Namespace：** `ExcelToWord_Configurement`  
 > 匯出設定類別 — 集中管理所有可配置的參數
@@ -143,3 +143,199 @@ Excel.Application        →  整個 Excel 程式本體
         └── Worksheets   →  工作表集合
             └── Worksheet →  單一工作表 (Sheet)
                 └── Range →  儲存格或範圍
+```
+---
+# 🧩 ExcelService — Excel 操作服務實作筆記
+
+本類別負責開啟 Excel、讀取命名範圍、並正確關閉與釋放資源。
+使用 Microsoft.Office.Interop.Excel (COM) 來操作 Excel。
+
+---
+## 📦 Namespace 與 using 區塊
+
+using System;
+
+using System.Runtime.InteropServices;
+
+using Excel = Microsoft.Office.Interop.Excel;
+
+using Excel = ...
+為了避免 Word 也有相同命名空間而導致衝突，給 Excel 取別名。
+
+using System.Runtime.InteropServices;
+用來釋放 COM 物件 (Marshal.ReleaseComObject())
+
+---
+## 🧱 類別結構
+namespace ExcelToWord_Service
+{
+    /// Excel 操作服務實作類別
+
+    /// 負責開啟 Excel、讀取命名範圍、關閉資源
+
+    public class ExcelService : IExcelService
+}
+
+---
+## 🔧 欄位與建構子
+private readonly Excel.Application _excelApp;
+private readonly Excel.Workbook _workbook;
+
+public ExcelService(string excelPath)
+{
+    _excelApp = new Excel.Application
+    {
+        Visible = false,      // 看不見 Excel 視窗（背景執行）
+        DisplayAlerts = false // 不要跳出提示訊息
+    };
+
+    // 開啟指定的 Excel 檔案
+    _workbook = _excelApp.Workbooks.Open(excelPath);
+}
+
+✏️ 說明
+
+Visible = false → Excel 在背景執行，不會彈出視窗。
+
+DisplayAlerts = false → 關閉「是否要儲存」等提示，避免程式被中斷。
+
+_workbook：代表目前開啟的活頁簿。
+
+---
+## 🧩 Workbook 屬性
+
+// Lambda 簡化屬性寫法
+
+public Excel.Workbook Workbook => _workbook;
+
+✏️ 說明
+
+這是「唯讀屬性（Read-only Property）」的簡化形式。
+等價於：
+
+public Excel.Workbook Workbook
+{
+    get { return _workbook; }
+}
+
+讓外部可以讀取 _workbook，但不能修改。
+
+---
+## 🎯 取得命名範圍
+public Excel.Range GetNamedRange(Excel.Worksheet ws, string rangeName)
+{
+    Excel.Range range = null; // 預設為 null，找不到時回傳 null
+
+    try
+    {
+        // 先找全域命名範圍（整個活頁簿層級）
+        range = _workbook.Names.Item(rangeName).RefersToRange;
+    }
+    catch
+    {
+        try
+        {
+            // 若全域找不到，再嘗試找工作表層級
+            range = ws.Names.Item(rangeName).RefersToRange;
+        }
+        catch
+        {
+            // 找不到則保持 null
+        }
+    }
+
+    return range;
+}
+
+✏️ 說明
+
+Excel.Names：Excel 檔案的「名稱管理員 (Name Manager)」。
+
+.Item(rangeName)：從名稱集合中取得指定名稱的命名範圍。
+
+.RefersToRange：取得該名稱實際對應的儲存格區域（例如 $A$1:$I$12）。
+
+若找不到，range 會保持 null，方便外部判斷。
+
+---
+## ❎ 關閉 Excel 並釋放資源
+
+public void CloseWorkbook()
+{
+
+    try
+    {
+
+        // 關閉目前活頁簿
+
+        _workbook?.Close(false);
+
+        // 關閉 Excel 應用程式
+
+        _excelApp?.Quit();
+
+        // 釋放 COM 物件
+        if (_workbook != null)
+            Marshal.ReleaseComObject(_workbook);
+        if (_excelApp != null)
+            Marshal.ReleaseComObject(_excelApp);
+
+        // 強制執行垃圾回收
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+    catch (Exception ex)
+
+    {
+        Console.WriteLine($"關閉 Excel 時發生問題：{ex.Message}");
+
+    }
+}
+
+✏️ 詳細說明
+
+_workbook?.Close(false)	關閉活頁簿但不儲存變更（false = 不儲存，true = 儲存）
+
+_excelApp?.Quit()	關閉整個 Excel 應用程式（無參數，沒有 Quit(false)）
+
+Marshal.ReleaseComObject()	手動釋放 COM 物件引用，避免 Excel.exe 殘留在背景
+
+GC.Collect()	強制觸發垃圾回收，清除所有未使用物件
+
+GC.WaitForPendingFinalizers()	等待所有終結器（finalizers）執行完畢，確保釋放完整
+
+---
+
+## 🧠 COM（Component Object Model）簡介
+
+定義：Windows 的舊式元件通訊技術，允許不同語言（C++、C#、VB）共用相同應用程式（如 Excel）。
+
+Excel Interop 為何屬於 COM？
+
+var app = new Excel.Application();
+
+
+這行其實是透過 COM 與「Excel.exe」溝通，建立一個背景 Excel 實例。
+
+為什麼要手動釋放？
+
+COM 物件不是純 .NET 物件，GC 無法自動回收它。
+
+若不釋放，Excel.exe 會留在背景（永遠不關）。
+
+---
+## 🧭 整體流程圖（概念順序）
+ExcelService 建構子
+    ↓
+new Excel.Application()
+    ↓
+Open Workbook
+    ↓
+GetNamedRange() 取得命名範圍
+    ↓
+CloseWorkbook()
+    ├─ _workbook.Close(false)
+    ├─ _excelApp.Quit()
+    ├─ Marshal.ReleaseComObject()
+    ├─ GC.Collect()
+    └─ GC.WaitForPendingFinalizers()

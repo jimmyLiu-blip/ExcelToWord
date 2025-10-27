@@ -1,6 +1,6 @@
-﻿using Excel = Microsoft.Office.Interop.Excel;
-// 的意思是：「幫 Microsoft.Office.Interop.Excel 這個很長的命名空間取一個簡短的名字叫 Excel。」
-// 也可以直接寫 using Microsoft.Office.Interop.Excel; 但是Word也會有類似用法，避免衝突產生，會建議取別名
+﻿// 意思是：「幫 Microsoft.Office.Interop.Excel 這個很長的命名空間取一個簡短的名字叫 Excel。」
+// 也可以直接寫 using Microsoft.Office.Interop.Excel; 但是Word也有類似用法，避免兩者衝突產生，會建議取別名
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelToWord_Service
 {
@@ -21,7 +21,7 @@ namespace ExcelToWord_Service
         Excel.Range GetNamedRange(Excel.Worksheet ws, string rangeName);
 
         /// 關閉 Excel 並釋放資源
-        void Close();
+        void CloseWorkbook();
     }
 }
 

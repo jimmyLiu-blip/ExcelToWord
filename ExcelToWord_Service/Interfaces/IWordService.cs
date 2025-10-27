@@ -3,22 +3,22 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelToWord_Service
 {
-    /// <summary>
     /// Word 操作服務介面
     /// 定義所有 Word 相關操作的契約
-    /// </summary>
     public interface IWordService
     {
-        /// <summary>開啟或建立 Word 文件</summary>
+        /// 開啟或建立 Word 文件
+        /// 類似Excel中的_excelApp.Workbooks.Open(path);
         Word.Document OpenOrCreate(string path);
 
-        /// <summary>插入 Excel 範圍的截圖到 Word</summary>
+        /// 插入 Excel 範圍的截圖到 Word
+        /// 
         void InsertRangePicture(Word.Document doc, string sheetName, Excel.Range range, float widthCm);
 
-        /// <summary>儲存並關閉 Word 文件</summary>
+        /// 儲存並關閉 Word 文件，負責「儲存 + 關閉單一文件」
         void SaveAndClose(Word.Document doc, string path);
 
-        /// <summary>關閉 Word 應用程式</summary>
+        /// 負責「關閉整個 Word 程式本體」
         void Quit();
     }
 }
