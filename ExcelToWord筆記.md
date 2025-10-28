@@ -143,3 +143,33 @@ Excel.Application        →  整個 Excel 程式本體
         └── Worksheets   →  工作表集合
             └── Worksheet →  單一工作表 (Sheet)
                 └── Range →  儲存格或範圍
+```
+
+開啟excel
+從第7張工作表開始
+對每張表找命名範圍ACL_1 / ACLN_1
+複製圖片到剪貼簿
+將圖片貼上Word
+關閉excel
+
+開啟檔案 OpenWordbook(path,visible)
+走訪工作表 EnmerateWorksheets(startIndex)
+找命名範圍 TryGetNameRange()
+複製範圍成圖片 CopyRangePictureToClipboard(range,format)
+資源釋放 Close()
+
+ExcelService：只處理 Excel 讀取與複製圖片到剪貼簿
+WordService： 只處理 Word  貼上、定位游標、縮放圖片
+Clipboard/Retry：可作為獨立 Helper（或暫時先放 ExcelService 內）
+
+MVP 先小後大
+
+先完成「能跑的最小路徑」
+
+再補齊：錯誤處理、工作簿/工作表雙層命名範圍、Retry、單位轉換等
+
+Application → Workbooks → Workbook → Worksheets → Worksheet → Range
+
+![alt text](image.png)
+
+![alt text](image-1.png)
