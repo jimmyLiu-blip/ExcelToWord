@@ -146,11 +146,10 @@ Excel.Application        →  整個 Excel 程式本體
 ```
 ---
 # 🧩 ExcelService — Excel 操作服務實作筆記
-
+```csharp
 本類別負責開啟 Excel、讀取命名範圍、並正確關閉與釋放資源。
 使用 Microsoft.Office.Interop.Excel (COM) 來操作 Excel。
 
----
 ## 📦 Namespace 與 using 區塊
 
 using System;
@@ -176,7 +175,6 @@ namespace ExcelToWord_Service
     public class ExcelService : IExcelService
 }
 
----
 ## 🔧 欄位與建構子
 private readonly Excel.Application _excelApp;
 private readonly Excel.Workbook _workbook;
@@ -201,7 +199,6 @@ DisplayAlerts = false → 關閉「是否要儲存」等提示，避免程式被
 
 _workbook：代表目前開啟的活頁簿。
 
----
 ## 🧩 Workbook 屬性
 
 // Lambda 簡化屬性寫法
@@ -220,7 +217,6 @@ public Excel.Workbook Workbook
 
 讓外部可以讀取 _workbook，但不能修改。
 
----
 ## 🎯 取得命名範圍
 public Excel.Range GetNamedRange(Excel.Worksheet ws, string rangeName)
 {
@@ -257,7 +253,6 @@ Excel.Names：Excel 檔案的「名稱管理員 (Name Manager)」。
 
 若找不到，range 會保持 null，方便外部判斷。
 
----
 ## ❎ 關閉 Excel 並釋放資源
 
 public void CloseWorkbook()
@@ -304,8 +299,6 @@ GC.Collect()	強制觸發垃圾回收，清除所有未使用物件
 
 GC.WaitForPendingFinalizers()	等待所有終結器（finalizers）執行完畢，確保釋放完整
 
----
-
 ## 🧠 COM（Component Object Model）簡介
 
 定義：Windows 的舊式元件通訊技術，允許不同語言（C++、C#、VB）共用相同應用程式（如 Excel）。
@@ -323,19 +316,76 @@ COM 物件不是純 .NET 物件，GC 無法自動回收它。
 
 若不釋放，Excel.exe 會留在背景（永遠不關）。
 
----
 ## 🧭 整體流程圖（概念順序）
 ExcelService 建構子
+
     ↓
 new Excel.Application()
+
     ↓
 Open Workbook
+
     ↓
 GetNamedRange() 取得命名範圍
+
     ↓
 CloseWorkbook()
+
     ├─ _workbook.Close(false)
     ├─ _excelApp.Quit()
     ├─ Marshal.ReleaseComObject()
     ├─ GC.Collect()
     └─ GC.WaitForPendingFinalizers()
+
+```
+---
+# 🧩IWordService 介面筆記
+```csharp
+Namespace： ExcelToWord_Service
+Word 操作服務介面 — 定義所有 Word 相關操作的契約
+
+此介面負責提供 Word 文件建立、貼圖、儲存與關閉 的標準操作，
+與 IExcelService 搭配實現 Excel → Word 自動化報表流程
+
+## 📘 介面原始程式碼
+using Word = Microsoft.Office.Interop.Word;
+using Excel = Microsoft.Office.Interop.Excel;
+
+namespace ExcelToWord_Service
+{
+    /// <summary>
+    /// Word 操作服務介面
+    /// 定義所有 Word 相關操作的契約
+    /// </summary>
+    public interface IWordService
+    {
+        /// <summary>
+        /// 開啟或建立 Word 文件
+        /// 類似 Excel 中的 _excelApp.Workbooks.Open(path);
+        /// </summary>
+        /// <param name="path">Word 檔案路徑</param>
+        /// <returns>回傳 Word 文件物件 (Word.Document)</returns>
+        Word.Document OpenOrCreate(string path);
+
+        /// <summary>
+        /// 插入 Excel 範圍的截圖到 Word
+        /// </summary>
+        /// <param name="doc">指定要貼入圖片的 Word 文件</param>
+        /// <param name="sheetName">Excel 工作表名稱，用於插入小標題或標籤</param>
+        /// <param name="range">Excel 範圍物件 (Range)，會被複製為圖片貼上</param>
+        /// <param name="widthCm">貼入 Word 後的圖片寬度（單位：公分）</param>
+        void InsertRangePicture(Word.Document doc, string sheetName, Excel.Range range, float widthCm);
+
+        /// <summary>
+        /// 儲存並關閉 Word 文件，負責「儲存 + 關閉單一文件」
+        /// </summary>
+        /// <param name="doc">要儲存與關閉的 Word 文件</param>
+        /// <param name="path">儲存的完整路徑</param>
+        void SaveAndClose(Word.Document doc, string path);
+
+        /// <summary>
+        /// 關閉整個 Word 程式本體 (Application)
+        /// </summary>
+        void Quit();
+    }
+}

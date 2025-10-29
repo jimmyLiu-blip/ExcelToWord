@@ -1,28 +1,29 @@
-﻿using System;
+﻿
 
-namespace ExcelToWord_Configurement
+namespace ExcelToWord.Configuration
 {
-    /// 匯出設定類別
-    /// 集中管理所有可配置的參數
     public class ExportSettings
     {
-        /// Excel 來源檔案路徑
         public string ExcelPath { get; set; } = @"C:\Reports\5GNR_3.7GHz_4.5GHz.xlsx";
 
-        /// Word 輸出資料夾
         public string OutputFolder { get; set; } = @"C:\Reports\WordOutputs_ByItem";
 
-        /// 要匯出的命名範圍清單
-        public string[] TargetNames { get; set; } = { "ACL_1", "ACLN_1" };
+        public string[] TargetNames { get; set; } = { 
+            "ACL_1", "ACL_2","ACL_3","ACL_4",
+            "ACLN_1","ACLN_2","ACLN_3","ACLN_4",
+            "FTol_1","FTol_2","FTol_3","FTol_4",
+            "Inter_1","Inter_2","Inter_3","Inter_4",
+            "OBE_1","OBE_2","OBE_3","OBE_4",
+            "OCB_1","OCB_2","OCB_3","OCB_4",
+            "Power_1","Power_2","Power_3","Power_4",
+            "RX_1","RX_2","RX_3","RX_4",
+            "Spurious_1","Spurious_2","Spurious_3","Spurious_4"  
+        };
 
-        /// 從第幾張工作表開始處理
         public int StartSheetIndex { get; set; } = 7;
 
-        /// 圖片統一寬度（公分）
-        public float ImageWidthCm { get; set; } = 15;
+        public float WidthCm { get; set; } = 18;
 
-        /// 每次操作後的延遲時間（毫秒）
-        public int DelayMs { get; set; } = 150;
-
+        public int DelayMs { get; set; } = 200;
     }
 }
