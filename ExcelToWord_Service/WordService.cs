@@ -29,33 +29,51 @@ namespace ExcelToWord.Service
 
         public void InsertRangePicture(Word.Document doc, string sheetName, Excel.Range range, float widthCm)
         {
-            try
+            int maxRetries = 3;
+            int currentRetry = 0;
+
+            while (currentRetry < maxRetries)
             {
-                doc.Content.Collapse(Word.WdCollapseDirection.wdCollapseEnd);
+                try
+                {
+                    doc.Content.Collapse(Word.WdCollapseDirection.wdCollapseEnd);
 
-                var para = doc.Content.Paragraphs.Add();
-                para.Range.Text = $"【{sheetName}】";
-                para.Range.set_Style(Word.WdBuiltinStyle.wdStyleHeading2); //多了Unit
-                para.Range.InsertParagraphAfter(); //整行忘記
+                    var para = doc.Content.Paragraphs.Add();
+                    para.Range.Text = $"【{sheetName}】";
+                    para.Range.set_Style(Word.WdBuiltinStyle.wdStyleHeading2); //多了Unit
+                    para.Range.InsertParagraphAfter(); //整行忘記
 
-                range.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture); //整行忘記 + 順序有誤
+                    range.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture); //整行忘記 + 順序有誤
 
-                doc.Activate();
+                    doc.Activate();
 
-                _wordApp.Selection.EndKey(Unit: Word.WdUnits.wdStory); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
-                _wordApp.Selection.Paste(); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
+                    _wordApp.Selection.EndKey(Unit: Word.WdUnits.wdStory); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
+                    _wordApp.Selection.Paste(); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
 
-                SetImageSize(doc, widthCm);
+                    SetImageSize(doc, widthCm);
 
-                _wordApp.Selection.TypeParagraph(); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
+                    _wordApp.Selection.TypeParagraph(); //整行忘記，是Selection不是Section，前面跟著Applicaiotn
+
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    currentRetry++;
+
+                    if (currentRetry >= maxRetries)
+                    {
+                        Console.BackgroundColor = ConsoleColor.Yellow;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                        Console.WriteLine($"嘗試 {maxRetries} 次後仍失敗：{ex.Message}");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"第 {currentRetry} 次嘗試失敗，重試中...");
+                        System.Threading.Thread.Sleep(300); // 失敗後等久一點
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                Console.BackgroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"出現異常錯誤無法貼上圖片，{ex.Message}");
-                Console.ResetColor();
-            }
-
         }
 
         private void SetImageSize(Word.Document doc, float widthCm)
@@ -71,7 +89,7 @@ namespace ExcelToWord.Service
             }
             catch (Exception ex)
             {
-                Console.BackgroundColor = ConsoleColor.Yellow;
+                Console.BackgroundColor = ConsoleColor.Green;
                 Console.WriteLine($"出現異常錯誤無法調整Word圖片大小，{ex.Message}");
                 Console.ResetColor();
             }
@@ -94,7 +112,7 @@ namespace ExcelToWord.Service
 
             catch (Exception ex)
             {
-                Console.BackgroundColor = ConsoleColor.Yellow;
+                Console.BackgroundColor = ConsoleColor.Green;
                 Console.WriteLine($"發生異常錯誤，無法關閉Word檔案，{ex.Message}");
                 Console.ResetColor();
             }
@@ -116,7 +134,7 @@ namespace ExcelToWord.Service
             }
             catch (Exception ex)
             {
-                Console.BackgroundColor = ConsoleColor.Yellow;
+                Console.BackgroundColor = ConsoleColor.Green;
                 Console.WriteLine($"發生異常錯誤，無法關閉Word執行檔，{ex.Message}");
                 Console.ResetColor();
             }

@@ -27,15 +27,23 @@ namespace ExcelToWord.Service
 
             try
             {
-                range = _workbook.Names.Item(rangeName).RefersToRange;
+                // range = ws.Range[rangeName];                     直接在 ws 尋找 rangeName
+                range = ws.Names.Item(rangeName).RefersToRange;  // 從 ws的點名簿去找 rangeName
             }
             catch
             {
                 try
                 {
-                    range = ws.Names.Item(rangeName).RefersToRange;
+                    var nameRange = _workbook.Names.Item(rangeName);
+                    if (nameRange != null)
+                        range = nameRange.RefersToRange;
                 }
-                catch { }
+                catch
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"找不到命名範圍：{ws.Name}!{rangeName}");
+                    Console.ResetColor();
+                }
             }
 
             return range;
