@@ -1,56 +1,46 @@
-﻿using ExcelToWord.Configuration;
+﻿using System;
+using ExcelToWord.Configuration;
 using ExcelToWord.Service;
-using ExcelToWord_Service;
-using System;
 
-namespace ExcelToWord
+namespace ExcelToWord_Practice
 {
-    class Program
+    public class Program
     {
-        [STAThread]
+        [STAThread] //遺漏沒寫到
         static void Main()
         {
-            Console.WriteLine("=================================");
-            Console.WriteLine(" ExcelToWord 匯出系統啟動中...");
-            Console.WriteLine("=================================\n");
-
             try
             {
-                // 載入設定
+                Console.WriteLine("===================");
+                Console.WriteLine("開始匯出Excel至Word");
+                Console.WriteLine("===================\n");
+
                 ExportSettings settings = new ExportSettings();
 
-                // 顯示設定資訊
-                Console.WriteLine($"Excel 檔案: {settings.ExcelPath}");
-                Console.WriteLine($"輸出資料夾: {settings.OutputFolder}");
-                Console.WriteLine($"目標範圍: {string.Join(", ", settings.TargetNames)}");
-                Console.WriteLine($"起始工作表: 第 {settings.StartSheetIndex} 張\n");
+                Console.WriteLine($"Excel 路徑為: {settings.ExcelPath} ");
+                Console.WriteLine($"Word 輸出資料夾路徑為: {settings.OutputFolder} ");
+                Console.WriteLine($"輸出範圍: {string.Join(",", settings.TargetNames)} ");  // 要使用Join讓裡面的字串隔開
+                Console.WriteLine($"從第 {settings.StartSheetIndex} 張 sheet 開始匯出\n");
 
-                // 建立服務實例
                 IExcelService excelService = new ExcelService(settings.ExcelPath);
-                IWordService wordService = new WordService();
+                IWordService wordService = new WordService(settings);
 
-                // 建立協調器並執行
-                ExportCoordinator coordinator = new ExportCoordinator(
-                    settings,
-                    excelService,
-                    wordService
-                );
+                ExportCoordinator coordinator = new ExportCoordinator(settings, excelService, wordService);
 
                 coordinator.Run();
 
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\n所有作業已完成!");
-                Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.Green; // 忘記寫
+                Console.WriteLine("\n所有作業已完成"); // 忘記寫
+                Console.ResetColor();   // 忘記寫
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\n發生錯誤：{ex.Message}");
-                Console.WriteLine($"錯誤詳情：{ex.StackTrace}");
+                Console.WriteLine($"發生異常狀況，{ex.Message}");
+                Console.WriteLine($"異常狀況路徑，\n{ex.StackTrace}");
                 Console.ResetColor();
             }
-
-            Console.WriteLine("\n按任意鍵結束...");
+            Console.WriteLine("\n按任意鍵離開");
             Console.ReadKey();
         }
     }

@@ -12,5 +12,7 @@ namespace ExcelToWord.Service
         void SaveAndClose(Word.Document doc, string wordpath);
 
         void Close();
+
+        void ConvertToPdf(string wordPath);
     }
 }

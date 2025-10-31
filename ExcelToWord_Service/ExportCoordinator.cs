@@ -1,74 +1,140 @@
 ﻿using ExcelToWord.Configuration;
-using ExcelToWord.Service;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Excel = Microsoft.Office.Interop.Excel;
+using Word = Microsoft.Office.Interop.Word;
 
-namespace ExcelToWord_Service
+namespace ExcelToWord.Service
 {
-    // 匯出流程協調器
-    // 負責協調 Excel 和 Word 服務,執行完整的匯出流程
     public class ExportCoordinator
     {
-        private readonly ExportSettings _settings;
+        private readonly ExportSettings _setting;
         private readonly IExcelService _excelService;
         private readonly IWordService _wordService;
 
-        public ExportCoordinator(ExportSettings settings, IExcelService excelService, IWordService wordService)
+        private readonly HashSet<string> _initializedWordFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        public ExportCoordinator(ExportSettings setting, IExcelService excelService, IWordService wordService)
         {
-            _settings = settings;
+            _setting = setting;
             _excelService = excelService;
             _wordService = wordService;
         }
 
         public void Run()
         {
-            // 建立輸出資料夾
-            Directory.CreateDirectory(_settings.OutputFolder);
+            Directory.CreateDirectory(_setting.OutputFolder);
 
             Excel.Workbook workbook = _excelService.Workbook;
 
-            // 處理每個工作表
-            for (int i = _settings.StartSheetIndex; i <= workbook.Sheets.Count; i++)
+            for (int i = _setting.StartSheetIndex; i <= workbook.Sheets.Count; i++)
             {
-                Excel.Worksheet ws = (Excel.Worksheet)workbook.Sheets[i];
-                Console.WriteLine($"\n 處理工作表：{ws.Name}");
+                Excel.Worksheet ws = (Excel.Worksheet)workbook.Sheets[i]; // 這行很重要
 
-                // 處理每個命名範圍
-                foreach (string rangeName in _settings.TargetNames)
+                if (ws.Visible != Excel.XlSheetVisibility.xlSheetVisible)
                 {
-                    // 取得命名範圍
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"略過隱藏工作表：{ws.Name}");
+                    Console.ResetColor();
+                    continue;
+                }
+
+                string sheetName = ws.Name;
+
+                Console.WriteLine($"\n 正在處理工作表：{sheetName}");
+
+                foreach (string rangeName in _setting.TargetNames)
+                {
+
                     Excel.Range range = _excelService.GetRangeName(ws, rangeName);
+
                     if (range == null)
                     {
-                        Console.WriteLine($"找不到命名範圍：{rangeName}（在 {ws.Name}）");
+                        Console.WriteLine($"找不到命名範圍：{rangeName}(在{ws.Name})");
                         continue;
                     }
 
-                    // 決定輸出檔案路徑
-                    string itemName = rangeName.Contains("_")
-                        ? rangeName.Split('_')[0]
-                        : rangeName;
-                    string wordPath = Path.Combine(_settings.OutputFolder, $"{itemName}.docx");
+                    if (range.EntireRow.Hidden || range.EntireColumn.Hidden)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"略過隱藏範圍：{ws.Name}!{rangeName}");
+                        Console.ResetColor();
+                        continue;
+                    }
 
-                    // 開啟 Word 文件並插入圖片
-                    var doc = _wordService.OpenOrCreate(wordPath);
-                    _wordService.InsertRangePicture(doc, ws.Name, range, _settings.WidthCm);
-                    _wordService.SaveAndClose(doc, wordPath);
+                    // 先嘗試用「完整名稱」映射
+                    string itemName;
+                    if (_setting.PrefixToWordName.TryGetValue(rangeName, out var mappedFull))
+                    {
+                        itemName = mappedFull;
+                    }
+                    else
+                    {
+                        // 判斷是否為「尾段是數字」的樣式：例如 ACL_1、n77_10
+                        string baseKey = rangeName;
+                        int us = rangeName.LastIndexOf('_');
+                        if (us > 0 && us < rangeName.Length - 1)
+                        {
+                            // 只有在最後一段是數字時，才把底線後面去掉當前綴
+                            if (int.TryParse(rangeName.Substring(us + 1), out _))
+                            {
+                                baseKey = rangeName.Substring(0, us); // ACL_1 -> ACL, n77_10 -> n77
+                            }
+                        }
 
-                    Console.WriteLine($" 匯出 {rangeName} → {wordPath}");
+                        // 用前綴找對照表，找不到就用 baseKey 當檔名
+                        itemName = _setting.PrefixToWordName.TryGetValue(baseKey, out var mappedPrefix)
+                            ? mappedPrefix
+                            : baseKey;
+                    }
 
-                    // 延遲確保 COM 操作完成
-                    Thread.Sleep(_settings.DelayMs);
+                    string wordPath = Path.Combine(_setting.OutputFolder, $"{itemName}.docx");
+
+                    try
+                    {
+                        if (!_initializedWordFiles.Contains(wordPath))
+                        {
+                            if (File.Exists(wordPath))
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine($"偵測到舊檔，將刪除覆蓋：{wordPath}");
+                                Console.ResetColor();
+                                File.Delete(wordPath);
+                            }
+                            _initializedWordFiles.Add(wordPath);
+                        }
+
+                        var doc = _wordService.OpenOrCreate(wordPath);
+                        _wordService.InsertRangePicture(doc, sheetName, range, _setting.ImageWidthCm);
+                        _wordService.SaveAndClose(doc, wordPath);
+
+                        Console.WriteLine($"匯出成功：{rangeName} → {wordPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"匯出失敗：{rangeName}（在 {ws.Name}） - {ex.Message}");
+                        Console.ResetColor();
+                    }
+
+                    Thread.Sleep(_setting.DelayMs);
                 }
             }
 
-            Console.WriteLine("\n 全部完成！");
+            Console.WriteLine("\n全部 Word 檔匯出完成，開始轉換 PDF...");
+            foreach (var wordFile in _initializedWordFiles)
+            {
+                _wordService.ConvertToPdf(wordFile);
+            }
 
-            // 清理資源
+            Console.WriteLine("\n 全部完成");
+
             _excelService.Close();
             _wordService.Close();
+
         }
     }
 }
